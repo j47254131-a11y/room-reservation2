@@ -267,10 +267,7 @@
         <label for="f-class">반</label>
         <input type="number" id="f-class" min="1" max="15" placeholder="예: 2">
       </div>
-      <div class="full">
-        <label for="f-purpose">사용 목적</label>
-        <input type="text" id="f-purpose" maxlength="100" placeholder="예: 식물 관찰 실험">
-      </div>
+      
       <div class="full actions">
         <button type="submit" class="primary" id="f-submit">예약하기</button>
       </div>
@@ -399,7 +396,6 @@ async function submitReservation(ev) {
   const date = $('f-date').value;
   const teacher = $('f-teacher').value.trim();
   const classNo = $('f-class').value;
-  const purpose = $('f-purpose').value.trim();
 
   if (!date) return toast('날짜를 선택해 주세요.', 'error');
   const dow = parse(date).getDay();
@@ -415,7 +411,6 @@ async function submitReservation(ev) {
     teacher_name: teacher,
     grade: Number($('f-grade').value),
     class_no: classNo ? Number(classNo) : null,
-    purpose: purpose || null,
   };
 
   const btn = $('f-submit');
@@ -431,7 +426,6 @@ async function submitReservation(ev) {
     toast(errMsg(error), 'error');
   } else {
     toast(`${niceDate(date)} ${row.period}교시 ${roomName(row.room_id)} 예약 완료!`, 'ok');
-    $('f-purpose').value = '';
   }
   await Promise.all([renderWeek(), loadList(), renderStats()]);   // 성공·실패 모두 최신 상태로 새로 고침 (차트 포함)
 }
@@ -456,7 +450,7 @@ async function renderWeek() {
   if (!roomId) { $('w-body').innerHTML = ''; return; }
 
   const { data, error } = await db.from('reservations')
-    .select('id, reservation_date, period, teacher_name, grade, class_no, purpose')
+    .select('id, reservation_date, period, teacher_name, grade, class_no')
     .eq('room_id', roomId)
     .gte('reservation_date', fmt(weekStart))
     .lte('reservation_date', fmt(friday));
@@ -474,7 +468,6 @@ async function renderWeek() {
       if (ds < today) cls.push('past');
       if (r) {
         cls.push('booked');
-        const tip = r.purpose ? ` title="${esc(r.purpose)}"` : '';
         return `<td class="${cls.join(' ')}"${tip}><strong>${esc(r.teacher_name)}</strong><span>${esc(classLabel(r))}</span></td>`;
       }
       return `<td class="${cls.join(' ')}" data-date="${ds}" data-period="${p}">${ds < today ? '' : '+ 예약'}</td>`;
@@ -504,7 +497,7 @@ async function loadList() {
   const showPast = $('s-past').checked;
 
   let q = db.from('reservations')
-    .select('id, room_id, reservation_date, period, teacher_name, grade, class_no, purpose')
+    .select('id, room_id, reservation_date, period, teacher_name, grade, class_no')
     .order('reservation_date', { ascending: true })
     .order('period', { ascending: true })
     .limit(200);
@@ -526,7 +519,7 @@ async function loadList() {
     <div class="item ${r.reservation_date < today ? 'past' : ''}">
       <div class="when">${niceDate(r.reservation_date)}</div>
       <div class="room">${r.period}교시 · ${esc(roomName(r.room_id))}</div>
-      <div class="who">${esc(r.teacher_name)} 선생님 · ${esc(classLabel(r))}${r.purpose ? `<small>${esc(r.purpose)}</small>` : ''}</div>
+      <div class="who">${esc(r.teacher_name)} 선생님 · ${esc(classLabel(r))}` : ''}</div>
       <button type="button" class="danger" data-id="${r.id}"
         data-label="${esc(`${niceDate(r.reservation_date)} ${r.period}교시 ${roomName(r.room_id)} (${r.teacher_name})`)}">취소</button>
     </div>`).join('');
