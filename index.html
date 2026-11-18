@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>초등학교 특별실 예약 시스템</title>
+  <!-- Supabase JS v2 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --primary-light: #eff6ff;
+      --danger: #dc2626;
+      --danger-hover: #b91c1c;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Malgun Gothic", sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 16px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 24px;
+      padding: 20px 16px;
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      border: 1px solid var(--border);
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      color: var(--primary);
+      margin-bottom: 4px;
+    }
+
+    header p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .grid-layout {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    @media (max-width: 860px) {
+      .grid-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      border: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--primary-light);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.88rem;
+      font-weight: 600;
+      margin-bottom: 5px;
+      color: var(--text);
+    }
+
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      color: var(--text);
+      background: #fff;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 10px 16px;
+      transition: background-color 0.2s, transform 0.05s;
+    }
+
+    button:active {
+      transform: scale(0.99);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      width: 100%;
+      padding: 12px;
+      font-size: 1rem;
+      margin-top: 4px;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-outline {
+      background: #fff;
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      font-size: 0.85rem;
+    }
+
+    .btn-outline:hover {
+      background: var(--bg);
+    }
+
+    .btn-danger {
+      background: #fee2e2;
+      color: var(--danger);
+      padding: 6px 10px;
+      font-size: 0.82rem;
+    }
+
+    .btn-danger:hover {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    /* 주간 시간표 컨트롤 */
+    .timetable-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      background: var(--primary-light);
+      padding: 12px;
+      border-radius: 8px;
+    }
+
+    .room-selector {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .room-selector label {
+      margin-bottom: 0;
+      white-space: nowrap;
+    }
+
+    .week-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .week-label {
+      font-weight: 700;
+      font-size: 0.92rem;
+      min-width: 155px;
+      text-align: center;
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 540px;
+      font-size: 0.9rem;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 10px 8px;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #f1f5f9;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    th.today-col {
+      background: #dbeafe;
+      color: var(--primary);
+    }
+
+    td.period-col {
+      background: #f8fafc;
+      font-weight: 700;
+      width: 68px;
+    }
+
+    td.slot-empty {
+      color: #cbd5e1;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    td.slot-empty:hover {
+      background: #f1f5f9;
+      color: var(--primary);
+    }
+
+    td.slot-booked {
+      background: #eff6ff;
+      color: #1e3a8a;
+    }
+
+    .slot-teacher {
+      font-weight: 700;
+      font-size: 0.92rem;
+      display: block;
+    }
+
+    .slot-meta {
+      font-size: 0.78rem;
+      color: #3b82f6;
+      display: block;
+      margin-top: 2px;
+    }
+
+    /* 검색 및 목록 */
+    .filter-bar {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr auto;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    @media (max-width: 640px) {
+      .filter-bar {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .list-table th, .list-table td {
+      padding: 10px;
+      font-size: 0.88rem;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+
+    .empty-msg {
+      text-align: center;
+      padding: 24px;
+      color: var(--text-muted);
+    }
+
+    .config-warning {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      color: #92400e;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 0.9rem;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🏫 초등학교 특별실 예약 시스템</h1>
+      <p>원하는 특별실의 주간 시간표를 확인하고 간편하게 예약하세요.</p>
+    </header>
+
+    <div id="configWarning" class="config-warning">
+      ⚠️ <strong>Supabase 설정 필요:</strong> HTML 코드 상단의 <code>SUPABASE_URL</code>과 <code>SUPABASE_KEY</code> 값을 본인의 프로젝트 정보로 입력해 주세요.
+    </div>
+
+    <div class="grid-layout">
+      <!-- 왼쪽: 예약 등록 폼 -->
+      <section class="card">
+        <h2 class="card-title">📝 특별실 예약 등록</h2>
+        <form id="reservationForm">
+          <div class="form-group">
+            <label for="formRoom">특별실 선택</label>
+            <select id="formRoom" required>
+              <option value="">불러오는 중...</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="formDate">예약 날짜</label>
+              <input type="date" id="formDate" required />
+            </div>
+            <div class="form-group">
+              <label for="formPeriod">교시</label>
+              <select id="formPeriod" required>
+                <option value="1">1교시</option>
+                <option value="2">2교시</option>
+                <option value="3">3교시</option>
+                <option value="4">4교시</option>
+                <option value="5">5교시</option>
+                <option value="6">6교시</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="formTeacher">교사 이름</label>
+            <input type="text" id="formTeacher" placeholder="예: 김선생" required />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="formGrade">학년</label>
+              <select id="formGrade" required>
+                <option value="1">1학년</option>
+                <option value="2">2학년</option>
+                <option value="3">3학년</option>
+                <option value="4">4학년</option>
+                <option value="5">5학년</option>
+                <option value="6">6학년</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="formClass">반</label>
+              <input type="number" id="formClass" min="1" max="20" placeholder="예: 2" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="formPurpose">사용 목적</label>
+            <input type="text" id="formPurpose" placeholder="예: 과학 실험 수업" required />
+          </div>
+
+          <button type="submit" class="btn-primary">예약하기</button>
+        </form>
+      </section>
+
+      <!-- 오른쪽: 주간 시간표 & 예약 목록 -->
+      <div>
+        <!-- 주간 시간표 -->
+        <section class="card">
+          <div class="card-title">
+            <span>📅 주간 시간표</span>
+            <span style="font-size: 0.8rem; font-weight: 400; color: var(--text-muted);">빈 칸을 누르면 날짜/교시가 자동 선택됩니다</span>
+          </div>
+
+          <div class="timetable-controls">
+            <div class="room-selector">
+              <label for="timetableRoom">특별실:</label>
+              <select id="timetableRoom"></select>
+            </div>
+            <div class="week-nav">
+              <button type="button" class="btn-outline" id="prevWeekBtn">◀ 이전 주</button>
+              <span class="week-label" id="weekLabel"></span>
+              <button type="button" class="btn-outline" id="nextWeekBtn">다음 주 ▶</button>
+              <button type="button" class="btn-outline" id="todayWeekBtn">이번 주</button>
+            </div>
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr id="timetableHead">
+                  <th>교시</th>
+                  <th>월</th>
+                  <th>화</th>
+                  <th>수</th>
+                  <th>목</th>
+                  <th>금</th>
+                </tr>
+              </thead>
+              <tbody id="timetableBody">
+                <tr><td colspan="6" class="empty-msg">시간표를 불러오는 중입니다...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 예약 검색 및 목록 -->
+        <section class="card">
+          <h2 class="card-title">🔍 예약 내역 검색 및 취소</h2>
+          <div class="filter-bar">
+            <input type="text" id="searchTeacher" placeholder="교사 이름 검색" />
+            <select id="searchRoom">
+              <option value="">전체 특별실</option>
+            </select>
+            <input type="date" id="searchDate" />
+            <button type="button" class="btn-outline" id="resetFilterBtn">초기화</button>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="list-table">
+              <thead>
+                <tr>
+                  <th>날짜</th>
+                  <th>교시</th>
+                  <th>특별실</th>
+                  <th>학년/반</th>
+                  <th>교사</th>
+                  <th>사용 목적</th>
+                  <th>관리</th>
+                </tr>
+              </thead>
+              <tbody id="reservationListBody">
+                <tr><td colspan="7" class="empty-msg">예약 목록을 불러오는 중입니다...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // 1. Supabase 설정 (여기에 본인의 값을 붙여 넣으세요)
+    // ==========================================
+    const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
+    const SUPABASE_KEY = 'YOUR_SUPABASE_PUBLISHABLE_ANON_KEY';
+
+    // 설정 확인 안내 표시
+    if (SUPABASE_URL.includes('YOUR_PROJECT_ID') || SUPABASE_KEY.includes('YOUR_SUPABASE')) {
+      document.getElementById('configWarning').style.display = 'block';
+    }
+
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL,
