@@ -410,7 +410,7 @@ async function submitReservation(ev) {
 
   const row = {
     room_id: Number($('f-room').value),
-    reserved_date: date,
+    reservation_date: date,
     period: Number($('f-period').value),
     teacher_name: teacher,
     grade: Number($('f-grade').value),
@@ -456,14 +456,14 @@ async function renderWeek() {
   if (!roomId) { $('w-body').innerHTML = ''; return; }
 
   const { data, error } = await db.from('reservations')
-    .select('id, reserved_date, period, teacher_name, grade, class_no, purpose')
+    .select('id, reservation_date, period, teacher_name, grade, class_no, purpose')
     .eq('room_id', roomId)
-    .gte('reserved_date', fmt(weekStart))
-    .lte('reserved_date', fmt(friday));
+    .gte('reservation_date', fmt(weekStart))
+    .lte('reservation_date', fmt(friday));
   if (error) { toast(errMsg(error), 'error'); return; }
 
   const map = {};
-  data.forEach((r) => (map[`${r.reserved_date}_${r.period}`] = r));
+  data.forEach((r) => (map[`${r.reservation_date}_${r.period}`] = r));
 
   $('w-body').innerHTML = PERIODS.map((p) => {
     const cells = days.map((d) => {
@@ -504,15 +504,15 @@ async function loadList() {
   const showPast = $('s-past').checked;
 
   let q = db.from('reservations')
-    .select('id, room_id, reserved_date, period, teacher_name, grade, class_no, purpose')
-    .order('reserved_date', { ascending: true })
+    .select('id, room_id, reservation_date, period, teacher_name, grade, class_no, purpose')
+    .order('reservation_date', { ascending: true })
     .order('period', { ascending: true })
     .limit(200);
 
   if (teacher) q = q.ilike('teacher_name', `%${teacher}%`);
   if (roomId) q = q.eq('room_id', Number(roomId));
-  if (date) q = q.eq('reserved_date', date);
-  else if (!showPast) q = q.gte('reserved_date', todayStr());
+  if (date) q = q.eq('reservation_date', date);
+  else if (!showPast) q = q.gte('reservation_date', todayStr());
 
   const { data, error } = await q;
   if (error) { toast(errMsg(error), 'error'); return; }
@@ -523,12 +523,12 @@ async function loadList() {
   }
   const today = todayStr();
   $('list').innerHTML = data.map((r) => `
-    <div class="item ${r.reserved_date < today ? 'past' : ''}">
-      <div class="when">${niceDate(r.reserved_date)}</div>
+    <div class="item ${r.reservation_date < today ? 'past' : ''}">
+      <div class="when">${niceDate(r.reservation_date)}</div>
       <div class="room">${r.period}교시 · ${esc(roomName(r.room_id))}</div>
       <div class="who">${esc(r.teacher_name)} 선생님 · ${esc(classLabel(r))}${r.purpose ? `<small>${esc(r.purpose)}</small>` : ''}</div>
       <button type="button" class="danger" data-id="${r.id}"
-        data-label="${esc(`${niceDate(r.reserved_date)} ${r.period}교시 ${roomName(r.room_id)} (${r.teacher_name})`)}">취소</button>
+        data-label="${esc(`${niceDate(r.reservation_date)} ${r.period}교시 ${roomName(r.room_id)} (${r.teacher_name})`)}">취소</button>
     </div>`).join('');
 }
 
@@ -591,9 +591,9 @@ async function renderStats() {
   const { from, to } = rangeOf(statsRange);
 
   const { data, error } = await db.from('reservations')
-    .select('room_id, reserved_date, period, grade')
-    .gte('reserved_date', fmt(from))
-    .lte('reserved_date', fmt(to));
+    .select('room_id, reservation_date, period, grade')
+    .gte('reservation_date', fmt(from))
+    .lte('reservation_date', fmt(to));
   if (error) { toast(errMsg(error), 'error'); return; }
 
   const weekdays = countWeekdays(from, to);
@@ -626,7 +626,7 @@ async function renderStats() {
   // ② 요일·교시별 혼잡도 (bubble: x = 월~금, y = 1~6교시, 원 크기 = 예약 건수)
   const grid = {};
   data.forEach((r) => {
-    const w = parse(r.reserved_date).getDay();          // 1(월) ~ 5(금)
+    const w = parse(r.reservation_date).getDay();          // 1(월) ~ 5(금)
     if (w < 1 || w > 5) return;
     const key = `${w}_${r.period}`;
     grid[key] = (grid[key] || 0) + 1;
